@@ -4,17 +4,19 @@ import "sync"
 
 // Cache is a thread-safe in-memory cache that supports generic key-value pairs.
 type Cache[K comparable, V any] struct {
-	storage   map[K]V
-	mu        sync.RWMutex
-	copyOnSet CopyFunc[V]
-	copyOnGet CopyFunc[V]
+	storage map[K]V
+	mu      sync.RWMutex
+	options *Options[K, V]
 }
 
 // NewCache creates a new instance of Cache.
-func NewCache[K comparable, V any]() *Cache[K, V] {
+func NewCache[K comparable, V any](opts ...CacheOptions[K, V]) *Cache[K, V] {
+	options := applyOptions(opts...)
+
 	return &Cache[K, V]{
 		storage: make(map[K]V),
 		mu:      sync.RWMutex{},
+		options: options,
 	}
 }
 
@@ -25,8 +27,8 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	defer c.mu.RUnlock()
 
 	value, exists := c.storage[key]
-	if exists && c.copyOnGet != nil {
-		value = c.copyOnGet(value)
+	if exists && c.options.copyOnGet != nil {
+		value = c.options.copyOnGet(value)
 	}
 
 	return value, exists
@@ -37,8 +39,8 @@ func (c *Cache[K, V]) Set(key K, value V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.copyOnSet != nil {
-		value = c.copyOnSet(value)
+	if c.options.copyOnSet != nil {
+		value = c.options.copyOnSet(value)
 	}
 
 	c.storage[key] = value
