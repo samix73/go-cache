@@ -1,7 +1,9 @@
 package cache
 
 import (
+	"context"
 	"sync"
+	"time"
 )
 
 // Cache is a thread-safe in-memory cache that supports generic key-value pairs.
@@ -17,6 +19,29 @@ func NewCache[K comparable, V any](opts ...CacheOptions[K, V]) *Cache[K, V] {
 		storage: make(map[K]V),
 
 		options: applyOptions(opts...),
+	}
+}
+
+// StartEvictionRoutine starts a background goroutine that periodically checks the cache size and evicts entries if necessary based on the configured eviction strategy.
+// The eviction routine will run until the provided context is canceled. This method will panic if no eviction strategy is configured for the cache.
+func (c *Cache[K, V]) StartEvictionRoutine(ctx context.Context, interval time.Duration) {
+	if c.options.evictionStrategy == nil {
+		panic("eviction strategy must be set to start eviction routine")
+	}
+
+	c.startEvictionRoutine(ctx, time.NewTicker(interval).C)
+}
+
+func (c *Cache[K, V]) startEvictionRoutine(ctx context.Context, ticker <-chan time.Time) {
+	for {
+		select {
+		case <-ticker:
+			c.mu.Lock()
+			c.evict()
+			c.mu.Unlock()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

@@ -25,10 +25,10 @@ func WithCopyOnGet[K comparable, V any](copyFunc CopyFunc[V]) CacheOptions[K, V]
 	}
 }
 
-// WithMaxSize sets the maximum number of entries the cache may hold and the eviction strategy to use.
+// WithEvictionStrategy sets the eviction strategy to use for the cache.
 // maxSize specifies the cache capacity, and strategy determines which entries are evicted when adding
 // a new entry would cause the cache to exceed that limit.
-func WithMaxSize[K comparable, V any](maxSize uint, strategy EvictionStrategy[K, V]) CacheOptions[K, V] {
+func WithEvictionStrategy[K comparable, V any](maxSize uint, strategy EvictionStrategy[K, V]) CacheOptions[K, V] {
 	return func(o *Options[K, V]) {
 		o.maxSize = maxSize
 		o.evictionStrategy = strategy

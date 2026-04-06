@@ -22,7 +22,7 @@ func TestCacheGetSet(t *testing.T) {
 		{
 			name: "with max size and strategy",
 			opts: []CacheOptions[string, int]{
-				WithMaxSize[string, int](10, NewRandomEvictionStrategy[string, int]()),
+				WithEvictionStrategy[string, int](10, NewRandomEvictionStrategy[string, int]()),
 			},
 			key:   "b",
 			value: 42,
@@ -101,7 +101,7 @@ func TestCacheDeleteAndClear(t *testing.T) {
 			name: "clear removes all keys and resets strategy",
 			run: func(t *testing.T) {
 				strategy := NewRandomEvictionStrategy[string, int]()
-				c := NewCache[string, int](WithMaxSize[string, int](10, strategy))
+				c := NewCache[string, int](WithEvictionStrategy[string, int](10, strategy))
 				c.Set("a", 1)
 				c.Set("b", 2)
 
@@ -267,7 +267,7 @@ func TestCacheMaxSizeEviction(t *testing.T) {
 	t.Parallel()
 
 	strategy := NewLRUEvictionStrategy[string, int]()
-	c := NewCache[string, int](WithMaxSize[string, int](2, strategy))
+	c := NewCache[string, int](WithEvictionStrategy[string, int](2, strategy))
 
 	c.Set("a", 1)
 	c.Set("b", 2)
@@ -306,7 +306,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 		{
 			name: "bounded with random eviction",
 			opts: []CacheOptions[int, int]{
-				WithMaxSize[int, int](128, NewRandomEvictionStrategy[int, int]()),
+				WithEvictionStrategy[int, int](128, NewRandomEvictionStrategy[int, int]()),
 			},
 			max: 128,
 		},
