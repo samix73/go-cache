@@ -7,8 +7,16 @@ type CompositeEvictionStrategy[K comparable, V any] struct {
 }
 
 func NewCompositeEvictionStrategy[K comparable, V any](strategies ...EvictionStrategy[K, V]) *CompositeEvictionStrategy[K, V] {
+	filtered := make([]EvictionStrategy[K, V], 0, len(strategies))
+	for _, strategy := range strategies {
+		if strategy == nil {
+			continue
+		}
+		filtered = append(filtered, strategy)
+	}
+
 	return &CompositeEvictionStrategy[K, V]{
-		strategies: strategies,
+		strategies: filtered,
 	}
 }
 
