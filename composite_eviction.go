@@ -1,5 +1,10 @@
 package cache
 
+import (
+	"maps"
+	"slices"
+)
+
 var _ EvictionStrategy[string, int] = (*CompositeEvictionStrategy[string, int])(nil)
 
 type CompositeEvictionStrategy[K comparable, V any] struct {
@@ -20,34 +25,44 @@ func NewCompositeEvictionStrategy[K comparable, V any](strategies ...EvictionStr
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) Evict() (K, bool) {
+func (c *CompositeEvictionStrategy[K, V]) Evict() []K {
+	keysToEvict := make(map[K]struct{}, 0)
 	for _, strategy := range c.strategies {
-		key, shouldEvict := strategy.Evict()
-		if shouldEvict {
-			return key, true
+		keys := strategy.Evict()
+		for _, key := range keys {
+			keysToEvict[key] = struct{}{}
 		}
 	}
 
-	var zeroKey K
-	return zeroKey, false
+	return slices.Collect(maps.Keys(keysToEvict))
 }
 
-func (c *CompositeEvictionStrategy[K, V]) RecordAccess(key K) {
+func (c *CompositeEvictionStrategy[K, V]) RecordAccess(keys ...K) {
 	for _, strategy := range c.strategies {
-		strategy.RecordAccess(key)
+		strategy.RecordAccess(keys...)
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) RecordDeletion(key K) {
+func (c *CompositeEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
 	for _, strategy := range c.strategies {
-		strategy.RecordDeletion(key)
+		strategy.RecordDeletion(keys...)
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) RecordInsertion(key K) {
+func (c *CompositeEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
 	for _, strategy := range c.strategies {
-		strategy.RecordInsertion(key)
+		strategy.RecordInsertion(keys...)
 	}
+}
+
+func (c *CompositeEvictionStrategy[K, V]) IsValid(k K) bool {
+	for _, strategy := range c.strategies {
+		if !strategy.IsValid(k) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c *CompositeEvictionStrategy[K, V]) Clear() {

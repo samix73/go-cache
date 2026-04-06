@@ -16,32 +16,39 @@ func NewRandomEvictionStrategy[K comparable, V any]() *RandomEvictionStrategy[K,
 	}
 }
 
-func (s *RandomEvictionStrategy[K, V]) RecordAccess(key K) {}
+func (s *RandomEvictionStrategy[K, V]) RecordAccess(keys ...K) {}
 
-func (s *RandomEvictionStrategy[K, V]) RecordInsertion(key K) {
+func (s *RandomEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.keys[key] = struct{}{}
+	for _, key := range keys {
+		s.keys[key] = struct{}{}
+	}
 }
 
-func (s *RandomEvictionStrategy[K, V]) RecordDeletion(key K) {
+func (s *RandomEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.keys, key)
+	for _, key := range keys {
+		delete(s.keys, key)
+	}
 }
 
-func (s *RandomEvictionStrategy[K, V]) Evict() (key K, shouldEvict bool) {
+func (s *RandomEvictionStrategy[K, V]) Evict() []K {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	for k := range s.keys {
-		return k, true
+		return []K{k}
 	}
 
-	var zero K
-	return zero, false
+	return nil
+}
+
+func (s *RandomEvictionStrategy[K, V]) IsValid(key K) bool {
+	return true // Random eviction does not consider any key invalid, so it always returns true.
 }
 
 func (s *RandomEvictionStrategy[K, V]) Clear() {

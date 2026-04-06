@@ -1,6 +1,8 @@
 package cache
 
-import "sync"
+import (
+	"sync"
+)
 
 // Cache is a thread-safe in-memory cache that supports generic key-value pairs.
 type Cache[K comparable, V any] struct {
@@ -19,31 +21,17 @@ func NewCache[K comparable, V any](opts ...CacheOptions[K, V]) *Cache[K, V] {
 }
 
 // delete removes the key-value pair associated with the given key from the cache without acquiring locks.
-func (c *Cache[K, V]) delete(key K) {
+func (c *Cache[K, V]) delete(keys ...K) {
+	if len(keys) == 0 {
+		return
+	}
+
 	if c.options.evictionStrategy != nil {
-		c.options.evictionStrategy.RecordDeletion(key)
+		c.options.evictionStrategy.RecordDeletion(keys...)
 	}
-	delete(c.storage, key)
-}
-
-// set adds or updates the value associated with the given key in the cache without acquiring locks.
-func (c *Cache[K, V]) set(key K, value V) {
-	if c.options.copyOnSet != nil {
-		value = c.options.copyOnSet(value)
+	for _, key := range keys {
+		delete(c.storage, key)
 	}
-
-	_, exists := c.storage[key]
-	if !exists {
-		c.evict()
-		if c.options.evictionStrategy != nil {
-			c.options.evictionStrategy.RecordInsertion(key)
-		}
-	} else if c.options.evictionStrategy != nil {
-		// Record access for existing keys to update their status in the eviction strategy.
-		c.options.evictionStrategy.RecordAccess(key)
-	}
-
-	c.storage[key] = value
 }
 
 // evict checks if the cache has exceeded its maximum size and evicts an entry if necessary.
@@ -56,10 +44,36 @@ func (c *Cache[K, V]) evict() {
 		return
 	}
 
-	key, shouldEvict := c.options.evictionStrategy.Evict()
-	if shouldEvict {
-		c.delete(key)
+	keysToDelete := c.options.evictionStrategy.Evict()
+	c.delete(keysToDelete...)
+}
+
+func (c *Cache[K, V]) get(keys []K) map[K]V {
+	results := make(map[K]V, len(keys))
+	foundKeys := make([]K, 0, len(keys))
+	for _, key := range keys {
+		value, exists := c.storage[key]
+		if !exists {
+			continue
+		}
+
+		if c.options.evictionStrategy != nil && !c.options.evictionStrategy.IsValid(key) {
+			continue
+		}
+
+		if c.options.copyOnGet != nil {
+			value = c.options.copyOnGet(value)
+		}
+
+		results[key] = value
+		foundKeys = append(foundKeys, key)
 	}
+
+	if c.options.evictionStrategy != nil {
+		c.options.evictionStrategy.RecordAccess(foundKeys...)
+	}
+
+	return results
 }
 
 // Get retrieves the value associated with the given key.
@@ -68,21 +82,50 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	value, exists := c.storage[key]
+	vals := c.get([]K{key})
+	if len(vals) == 0 {
+		var zeroValue V
+		return zeroValue, false
+	}
+
+	val, exists := vals[key]
 	if !exists {
 		var zeroValue V
 		return zeroValue, false
 	}
 
-	if c.options.copyOnGet != nil {
-		value = c.options.copyOnGet(value)
-	}
+	return val, true
+}
 
-	if c.options.evictionStrategy != nil {
-		c.options.evictionStrategy.RecordAccess(key)
-	}
+// MGet retrieves the values associated with the given keys.
+// It returns a map of keys to values for the keys that exist in the cache.
+func (c *Cache[K, V]) MGet(keys ...K) map[K]V {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	return value, exists
+	return c.get(keys)
+}
+
+// set adds or updates the value associated with the given key in the cache without acquiring locks.
+func (c *Cache[K, V]) set(pairs map[K]V) {
+	for key, value := range pairs {
+		if c.options.copyOnSet != nil {
+			value = c.options.copyOnSet(value)
+		}
+
+		_, exists := c.storage[key]
+		if !exists {
+			c.evict()
+			if c.options.evictionStrategy != nil {
+				c.options.evictionStrategy.RecordInsertion(key)
+			}
+		} else if c.options.evictionStrategy != nil {
+			// Record access for existing keys to update their status in the eviction strategy.
+			c.options.evictionStrategy.RecordAccess(key)
+		}
+
+		c.storage[key] = value
+	}
 }
 
 // Set adds or updates the value associated with the given key in the cache.
@@ -90,7 +133,14 @@ func (c *Cache[K, V]) Set(key K, value V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.set(key, value)
+	c.set(map[K]V{key: value})
+}
+
+func (c *Cache[K, V]) MSet(pairs map[K]V) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.set(pairs)
 }
 
 // Delete removes the value associated with the given key from the cache.
@@ -115,7 +165,7 @@ func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new
 		return false
 	}
 
-	c.set(key, value)
+	c.set(map[K]V{key: value})
 
 	return true
 }

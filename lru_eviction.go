@@ -21,54 +21,62 @@ func NewLRUEvictionStrategy[K comparable, V any]() *LRUEvictionStrategy[K, V] {
 	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) Evict() (K, bool) {
+func (l *LRUEvictionStrategy[K, V]) Evict() []K {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
 	if l.list.Len() == 0 {
-		var zero K
-		return zero, false
+		return nil
 	}
 
 	if l.list.Back() == nil {
-		var zero K
-		return zero, false
+		return nil
 	}
 
-	return l.list.Back().Value.(K), true
+	return []K{l.list.Back().Value.(K)}
 }
 
-func (l *LRUEvictionStrategy[K, V]) RecordAccess(key K) {
+func (l *LRUEvictionStrategy[K, V]) RecordAccess(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	element, exists := l.lookup[key]
-	if !exists {
-		return
-	}
+	for _, key := range keys {
+		element, exists := l.lookup[key]
+		if !exists {
+			continue
+		}
 
-	l.list.MoveToFront(element)
+		l.list.MoveToFront(element)
+	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) RecordInsertion(key K) {
+func (l *LRUEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	element := l.list.PushFront(key)
-	l.lookup[key] = element
+	for _, key := range keys {
+		element := l.list.PushFront(key)
+		l.lookup[key] = element
+	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) RecordDeletion(key K) {
+func (l *LRUEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	element, exists := l.lookup[key]
-	if !exists {
-		return
-	}
+	for _, key := range keys {
+		element, exists := l.lookup[key]
+		if !exists {
+			continue
+		}
 
-	l.list.Remove(element)
-	delete(l.lookup, key)
+		l.list.Remove(element)
+		delete(l.lookup, key)
+	}
+}
+
+func (l *LRUEvictionStrategy[K, V]) IsValid(key K) bool {
+	return true // LRU strategy does not invalidate keys based on access patterns, so we always return true.
 }
 
 func (l *LRUEvictionStrategy[K, V]) Clear() {
