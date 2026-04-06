@@ -6,7 +6,7 @@ type CompositeEvictionStrategy[K comparable, V any] struct {
 	strategies []EvictionStrategy[K, V]
 }
 
-func NewCompositeEvictionStrategy[K comparable, V any](strategies []EvictionStrategy[K, V]) *CompositeEvictionStrategy[K, V] {
+func NewCompositeEvictionStrategy[K comparable, V any](strategies ...EvictionStrategy[K, V]) *CompositeEvictionStrategy[K, V] {
 	return &CompositeEvictionStrategy[K, V]{
 		strategies: strategies,
 	}
