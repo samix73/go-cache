@@ -34,7 +34,7 @@ func TestCacheGetSet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewCache[string, int](tc.opts...)
+			c := NewCache(tc.opts...)
 			c.Set(tc.key, tc.value)
 
 			got, ok := c.Get(tc.key)
@@ -101,7 +101,7 @@ func TestCacheDeleteAndClear(t *testing.T) {
 			name: "clear removes all keys and resets strategy",
 			run: func(t *testing.T) {
 				strategy := NewRandomEvictionStrategy[string, int]()
-				c := NewCache[string, int](WithEvictionStrategy[string, int](10, strategy))
+				c := NewCache(WithEvictionStrategy[string, int](10, strategy))
 				c.Set("a", 1)
 				c.Set("b", 2)
 
@@ -185,7 +185,10 @@ func TestCacheCompareAndSwap(t *testing.T) {
 				c.Set("k", *tc.seed)
 			}
 
-			swapped := c.CompareAndSwap("k", tc.newValue, tc.compareFn)
+			swapped, err := c.CompareAndSwap("k", tc.newValue, tc.compareFn)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if swapped != tc.wantSwapped {
 				t.Fatalf("expected swapped=%v, got %v", tc.wantSwapped, swapped)
 			}
@@ -217,7 +220,7 @@ func TestCacheCopyOptions(t *testing.T) {
 		{
 			name: "copy on set isolates stored value",
 			run: func(t *testing.T) {
-				c := NewCache[int, []int](WithCopyOnSet[int, []int](copySlice))
+				c := NewCache(WithCopyOnSet[int](copySlice))
 				input := []int{1, 2, 3}
 				c.Set(1, input)
 				input[0] = 99
@@ -267,7 +270,7 @@ func TestCacheMaxSizeEviction(t *testing.T) {
 	t.Parallel()
 
 	strategy := NewLRUEvictionStrategy[string, int]()
-	c := NewCache[string, int](WithEvictionStrategy[string, int](2, strategy))
+	c := NewCache(WithEvictionStrategy[string, int](2, strategy))
 
 	c.Set("a", 1)
 	c.Set("b", 2)
@@ -317,15 +320,14 @@ func TestCacheConcurrentAccess(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			c := NewCache[int, int](tc.opts...)
+			c := NewCache(tc.opts...)
 			const workers = 24
 			const opsPerWorker = 2000
 
 			var wg sync.WaitGroup
 			start := make(chan struct{})
 
-			for worker := 0; worker < workers; worker++ {
-				worker := worker
+			for worker := range workers {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
@@ -339,7 +341,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 						case 1:
 							_, _ = c.Get(key)
 						case 2:
-							c.CompareAndSwap(key, op, func(current, new int) bool {
+							_, _ = c.CompareAndSwap(key, op, func(current, new int) bool {
 								return current <= new
 							})
 						case 3:

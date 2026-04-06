@@ -2,8 +2,13 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
+)
+
+var (
+	ErrBatchSizeExceedsMaxSize = errors.New("batch size exceeds maximum cache size")
 )
 
 // Cache is a thread-safe in-memory cache that supports generic key-value pairs.
@@ -23,13 +28,18 @@ func NewCache[K comparable, V any](opts ...CacheOptions[K, V]) *Cache[K, V] {
 }
 
 // StartEvictionRoutine starts a background goroutine that periodically checks the cache size and evicts entries if necessary based on the configured eviction strategy.
-// The eviction routine will run until the provided context is canceled. This method will panic if no eviction strategy is configured for the cache.
-func (c *Cache[K, V]) StartEvictionRoutine(ctx context.Context, interval time.Duration) {
+// The eviction routine will run until the provided context is canceled. This method will return an error if no eviction strategy is configured for the cache.
+func (c *Cache[K, V]) StartEvictionRoutine(ctx context.Context, interval time.Duration) error {
 	if c.options.evictionStrategy == nil {
-		panic("eviction strategy must be set to start eviction routine")
+		return errors.New("eviction routine requires an eviction strategy to be configured")
 	}
 
-	c.startEvictionRoutine(ctx, time.NewTicker(interval).C)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	c.startEvictionRoutine(ctx, ticker.C)
+
+	return nil
 }
 
 func (c *Cache[K, V]) startEvictionRoutine(ctx context.Context, ticker <-chan time.Time) {
@@ -132,7 +142,11 @@ func (c *Cache[K, V]) MGet(keys ...K) map[K]V {
 }
 
 // set adds or updates the value associated with the given key in the cache without acquiring locks.
-func (c *Cache[K, V]) set(pairs map[K]V) {
+func (c *Cache[K, V]) set(pairs map[K]V) error {
+	if c.options.maxSize > 0 && len(pairs) > int(c.options.maxSize) {
+		return ErrBatchSizeExceedsMaxSize
+	}
+
 	for key, value := range pairs {
 		if c.options.copyOnSet != nil {
 			value = c.options.copyOnSet(value)
@@ -151,21 +165,24 @@ func (c *Cache[K, V]) set(pairs map[K]V) {
 
 		c.storage[key] = value
 	}
+
+	return nil
 }
 
 // Set adds or updates the value associated with the given key in the cache.
-func (c *Cache[K, V]) Set(key K, value V) {
+func (c *Cache[K, V]) Set(key K, value V) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.set(map[K]V{key: value})
+	return c.set(map[K]V{key: value})
 }
 
-func (c *Cache[K, V]) MSet(pairs map[K]V) {
+// MSet adds or updates the values associated with the given keys in the cache.
+func (c *Cache[K, V]) MSet(pairs map[K]V) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.set(pairs)
+	return c.set(pairs)
 }
 
 // Delete removes the value associated with the given key from the cache.
@@ -177,9 +194,9 @@ func (c *Cache[K, V]) Delete(key K) {
 }
 
 // CompareAndSwap updates the value associated with the given key if the compareFn returns true.
-func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new V) bool) bool {
+func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new V) bool) (bool, error) {
 	if compareFn == nil {
-		return false
+		return false, errors.New("compare function cannot be nil")
 	}
 
 	c.mu.Lock()
@@ -187,12 +204,14 @@ func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new
 
 	currentValue, exists := c.storage[key]
 	if !exists || !compareFn(currentValue, value) {
-		return false
+		return false, nil
 	}
 
-	c.set(map[K]V{key: value})
+	if err := c.set(map[K]V{key: value}); err != nil {
+		return false, err
+	}
 
-	return true
+	return true, nil
 }
 
 // Clear removes all key-value pairs from the cache.
