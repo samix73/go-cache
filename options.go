@@ -7,7 +7,6 @@ type CopyFunc[V any] func(V) V
 type Options[K comparable, V any] struct {
 	copyOnSet        CopyFunc[V]
 	copyOnGet        CopyFunc[V]
-	maxSize          uint
 	evictionStrategy EvictionStrategy[K, V]
 }
 
@@ -26,11 +25,8 @@ func WithCopyOnGet[K comparable, V any](copyFunc CopyFunc[V]) CacheOptions[K, V]
 }
 
 // WithEvictionStrategy sets the eviction strategy to use for the cache.
-// maxSize specifies the cache capacity, and strategy determines which entries are evicted when adding
-// a new entry would cause the cache to exceed that limit.
-func WithEvictionStrategy[K comparable, V any](maxSize uint, strategy EvictionStrategy[K, V]) CacheOptions[K, V] {
+func WithEvictionStrategy[K comparable, V any](strategy EvictionStrategy[K, V]) CacheOptions[K, V] {
 	return func(o *Options[K, V]) {
-		o.maxSize = maxSize
 		o.evictionStrategy = strategy
 	}
 }

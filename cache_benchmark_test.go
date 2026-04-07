@@ -28,7 +28,7 @@ func BenchmarkCacheSetOptions(b *testing.B) {
 		{
 			name: "max size with eviction",
 			new: func() *Cache[int, []byte] {
-				return NewCache(WithEvictionStrategy[int, []byte](4096, NewRandomEvictionStrategy[int, []byte]()))
+				return NewCache(WithEvictionStrategy[int, []byte](NewLRUEvictionStrategy[int, []byte](4096)))
 			},
 		},
 	}
@@ -74,7 +74,7 @@ func BenchmarkCacheGetOptions(b *testing.B) {
 		{
 			name: "max size with eviction",
 			new: func() *Cache[int, []byte] {
-				return NewCache[int, []byte](WithEvictionStrategy[int, []byte](4096, NewRandomEvictionStrategy[int, []byte]()))
+				return NewCache[int, []byte](WithEvictionStrategy[int, []byte](NewLRUEvictionStrategy[int, []byte](4096)))
 			},
 		},
 	}
@@ -127,7 +127,7 @@ func BenchmarkCacheMixedOptions(b *testing.B) {
 		{
 			name: "max size with eviction",
 			new: func() *Cache[int, []byte] {
-				return NewCache[int, []byte](WithEvictionStrategy[int, []byte](4096, NewRandomEvictionStrategy[int, []byte]()))
+				return NewCache[int, []byte](WithEvictionStrategy[int, []byte](NewLRUEvictionStrategy[int, []byte](4096)))
 			},
 		},
 	}

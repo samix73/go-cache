@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-var (
-	ErrBatchSizeExceedsMaxSize = errors.New("batch size exceeds maximum cache size")
-)
-
 // Cache is a thread-safe in-memory cache that supports generic key-value pairs.
 type Cache[K comparable, V any] struct {
 	storage map[K]V
@@ -72,10 +68,6 @@ func (c *Cache[K, V]) delete(keys ...K) {
 // evict checks if the cache has exceeded its maximum size and evicts an entry if necessary.
 func (c *Cache[K, V]) evict() {
 	if c.options.evictionStrategy == nil {
-		return
-	}
-
-	if c.options.maxSize == 0 || uint(len(c.storage)) < c.options.maxSize {
 		return
 	}
 
@@ -142,11 +134,7 @@ func (c *Cache[K, V]) MGet(keys ...K) map[K]V {
 }
 
 // set adds or updates the value associated with the given key in the cache without acquiring locks.
-func (c *Cache[K, V]) set(pairs map[K]V) error {
-	if c.options.maxSize > 0 && len(pairs) > int(c.options.maxSize) {
-		return ErrBatchSizeExceedsMaxSize
-	}
-
+func (c *Cache[K, V]) set(pairs map[K]V) {
 	for key, value := range pairs {
 		if c.options.copyOnSet != nil {
 			value = c.options.copyOnSet(value)
@@ -165,24 +153,22 @@ func (c *Cache[K, V]) set(pairs map[K]V) error {
 
 		c.storage[key] = value
 	}
-
-	return nil
 }
 
 // Set adds or updates the value associated with the given key in the cache.
-func (c *Cache[K, V]) Set(key K, value V) error {
+func (c *Cache[K, V]) Set(key K, value V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.set(map[K]V{key: value})
+	c.set(map[K]V{key: value})
 }
 
 // MSet adds or updates the values associated with the given keys in the cache.
-func (c *Cache[K, V]) MSet(pairs map[K]V) error {
+func (c *Cache[K, V]) MSet(pairs map[K]V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.set(pairs)
+	c.set(pairs)
 }
 
 // Delete removes the value associated with the given key from the cache.
@@ -207,9 +193,7 @@ func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new
 		return false, nil
 	}
 
-	if err := c.set(map[K]V{key: value}); err != nil {
-		return false, err
-	}
+	c.set(map[K]V{key: value})
 
 	return true, nil
 }
