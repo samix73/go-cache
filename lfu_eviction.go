@@ -7,6 +7,9 @@ import (
 
 var _ EvictionStrategy[any] = (*LFUEvictionStrategy[any])(nil)
 
+// LFUEvictionStrategy implements the Least Frequently Used (LFU) eviction strategy.
+// It tracks the frequency of access for each key and evicts the least frequently used keys when the cache exceeds its maximum size.
+// In case of ties in frequency, it evicts the least recently accessed keys first.
 type LFUEvictionStrategy[K comparable] struct {
 	maxSize int
 	entries map[K]lfuEntry
@@ -19,6 +22,7 @@ type lfuEntry struct {
 	accessTime int
 }
 
+// NewLFUEvictionStrategy creates a new LFUEvictionStrategy with the specified maximum size.
 func NewLFUEvictionStrategy[K comparable](maxSize int) *LFUEvictionStrategy[K] {
 	return &LFUEvictionStrategy[K]{
 		maxSize: maxSize,
@@ -33,6 +37,7 @@ func (l *LFUEvictionStrategy[K]) accessTime() int {
 	return n
 }
 
+// Evict returns a slice of keys that should be evicted based on the LFU strategy.
 func (l *LFUEvictionStrategy[K]) Evict() []K {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -92,6 +97,7 @@ func (l *LFUEvictionStrategy[K]) RecordAccess(keys ...K) {
 	}
 }
 
+// RecordDeletion removes the specified keys from the LFU tracking.
 func (l *LFUEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -101,6 +107,7 @@ func (l *LFUEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	}
 }
 
+// RecordInsertion adds new keys to the LFU tracking with an initial frequency of 1 and sets their access time.
 func (l *LFUEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -113,6 +120,7 @@ func (l *LFUEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	}
 }
 
+// Clear removes all entries from the LFU tracking and resets the access counter.
 func (l *LFUEvictionStrategy[K]) Clear() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
