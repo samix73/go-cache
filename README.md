@@ -6,8 +6,6 @@
 
 A generic, thread-safe in-memory cache for Go with pluggable eviction strategies.
 
-GoDoc: [pkg.go.dev/github.com/samix73/go-cache](https://pkg.go.dev/github.com/samix73/go-cache)
-
 - Generic API: `Cache[K comparable, V any]`
 - Concurrency-safe operations via `sync.RWMutex`
 - Pluggable eviction strategies:
