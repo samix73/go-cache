@@ -146,7 +146,9 @@ func (c *Cache[K, V]) set(pairs map[K]V) {
 			if c.options.evictionStrategy != nil {
 				c.options.evictionStrategy.RecordInsertion(key)
 			}
-			c.evict()
+      if !c.options.disableEvictionOnSet {
+        c.evict()
+      }
 		} else if c.options.evictionStrategy != nil {
 			// Record access for existing keys to update their status in the eviction strategy.
 			c.options.evictionStrategy.RecordAccess(key)

@@ -1,8 +1,10 @@
 package cache
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestCacheGetSet(t *testing.T) {
@@ -18,14 +20,6 @@ func TestCacheGetSet(t *testing.T) {
 			name:  "default options",
 			key:   "a",
 			value: 10,
-		},
-		{
-			name: "with max size and strategy",
-			opts: []CacheOptions[string, int]{
-				WithEvictionStrategy[string, int](NewRandomEvictionStrategy[string, int]()),
-			},
-			key:   "b",
-			value: 42,
 		},
 	}
 
@@ -100,7 +94,7 @@ func TestCacheDeleteAndClear(t *testing.T) {
 		{
 			name: "clear removes all keys and resets strategy",
 			run: func(t *testing.T) {
-				strategy := NewRandomEvictionStrategy[string, int]()
+				strategy := NewLRUEvictionStrategy[string, int](10)
 				c := NewCache(WithEvictionStrategy[string, int](strategy))
 				c.Set("a", 1)
 				c.Set("b", 2)
@@ -110,8 +104,8 @@ func TestCacheDeleteAndClear(t *testing.T) {
 				if size := cacheSize(c); size != 0 {
 					t.Fatalf("expected cache size 0 after Clear, got %d", size)
 				}
-				if len(strategy.keys) != 0 {
-					t.Fatalf("expected strategy keys to be cleared, got %d", len(strategy.keys))
+				if len(strategy.lookup) != 0 {
+					t.Fatalf("expected strategy keys to be cleared, got %d", len(strategy.lookup))
 				}
 			},
 		},
@@ -309,6 +303,70 @@ func TestCacheMSetEvictsAllAboveMaxSize(t *testing.T) {
 
 	if size := cacheSize(c); size != maxSize {
 		t.Fatalf("expected cache size %d after MSet, got %d", maxSize, size)
+  }
+}
+
+func TestCacheDisableEvictionOnSet(t *testing.T) {
+	t.Parallel()
+
+	// With DisableEvictionOnSet, inserting beyond the max size should not evict entries.
+	strategy := NewLRUEvictionStrategy[string, int](2)
+	c := NewCache(
+		WithEvictionStrategy[string, int](strategy),
+		WithDisableEvictionOnSet[string, int](),
+	)
+
+	c.Set("a", 1)
+	c.Set("b", 2)
+	c.Set("c", 3) // would normally evict one entry, but should not here
+
+	if size := cacheSize(c); size != 3 {
+		t.Fatalf("expected cache size 3 (eviction disabled on set), got %d", size)
+	}
+
+	for _, key := range []string{"a", "b", "c"} {
+		if _, ok := c.Get(key); !ok {
+			t.Fatalf("expected key %q to remain when eviction on set is disabled", key)
+		}
+	}
+}
+
+func TestCacheDisableEvictionOnSetBackgroundRoutineStillEvicts(t *testing.T) {
+	t.Parallel()
+
+	// Even with DisableEvictionOnSet, the background eviction routine should still evict entries.
+	strategy := NewLRUEvictionStrategy[string, int](2)
+	c := NewCache(
+		WithEvictionStrategy[string, int](strategy),
+		WithDisableEvictionOnSet[string, int](),
+	)
+
+	c.Set("a", 1)
+	c.Set("b", 2)
+	c.Set("c", 3) // goes in without eviction because the option is set
+
+	if size := cacheSize(c); size != 3 {
+		t.Fatalf("expected cache size 3 before background eviction, got %d", size)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	go func() {
+		_ = c.StartEvictionRoutine(ctx, 10*time.Millisecond)
+	}()
+
+	// Wait until the cache shrinks to the configured max size (2).
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if cacheSize(c) <= 2 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if size := cacheSize(c); size > 2 {
+		t.Fatalf("expected background routine to evict down to max size 2, got %d", size)
 	}
 }
 
