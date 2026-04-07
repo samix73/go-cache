@@ -170,7 +170,6 @@ func TestCacheCompareAndSwap(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -179,10 +178,7 @@ func TestCacheCompareAndSwap(t *testing.T) {
 				c.Set("k", *tc.seed)
 			}
 
-			swapped, err := c.CompareAndSwap("k", tc.newValue, tc.compareFn)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			swapped := c.CompareAndSwap("k", tc.newValue, tc.compareFn)
 			if swapped != tc.wantSwapped {
 				t.Fatalf("expected swapped=%v, got %v", tc.wantSwapped, swapped)
 			}
@@ -303,7 +299,7 @@ func TestCacheMSetEvictsAllAboveMaxSize(t *testing.T) {
 
 	if size := cacheSize(c); size != maxSize {
 		t.Fatalf("expected cache size %d after MSet, got %d", maxSize, size)
-  }
+	}
 }
 
 func TestCacheDisableEvictionOnSet(t *testing.T) {
@@ -416,7 +412,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 						case 1:
 							_, _ = c.Get(key)
 						case 2:
-							_, _ = c.CompareAndSwap(key, op, func(current, new int) bool {
+							_ = c.CompareAndSwap(key, op, func(current, new int) bool {
 								return current <= new
 							})
 						case 3:

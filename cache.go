@@ -146,9 +146,9 @@ func (c *Cache[K, V]) set(pairs map[K]V) {
 			if c.options.evictionStrategy != nil {
 				c.options.evictionStrategy.RecordInsertion(key)
 			}
-      if !c.options.disableEvictionOnSet {
-        c.evict()
-      }
+			if !c.options.disableEvictionOnSet {
+				c.evict()
+			}
 		} else if c.options.evictionStrategy != nil {
 			// Record access for existing keys to update their status in the eviction strategy.
 			c.options.evictionStrategy.RecordAccess(key)
@@ -181,9 +181,9 @@ func (c *Cache[K, V]) Delete(key K) {
 }
 
 // CompareAndSwap updates the value associated with the given key if the compareFn returns true.
-func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new V) bool) (bool, error) {
+func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new V) bool) bool {
 	if compareFn == nil {
-		return false, errors.New("compare function cannot be nil")
+		return false
 	}
 
 	c.mu.Lock()
@@ -191,12 +191,12 @@ func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new
 
 	currentValue, exists := c.storage[key]
 	if !exists || !compareFn(currentValue, value) {
-		return false, nil
+		return false
 	}
 
 	c.set(map[K]V{key: value})
 
-	return true, nil
+	return true
 }
 
 // Clear removes all key-value pairs from the cache.
