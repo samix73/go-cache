@@ -10,7 +10,7 @@ func TestRandomEvictionStrategyEvict(t *testing.T) {
 	t.Run("does not evict when under max size", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](3)
+		strategy := NewRandomEvictionStrategy[string](3)
 		strategy.RecordInsertion("a", "b")
 
 		if keys := strategy.Evict(); len(keys) != 0 {
@@ -21,7 +21,7 @@ func TestRandomEvictionStrategyEvict(t *testing.T) {
 	t.Run("does not evict when at max size", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](3)
+		strategy := NewRandomEvictionStrategy[string](3)
 		strategy.RecordInsertion("a", "b", "c")
 
 		if keys := strategy.Evict(); len(keys) != 0 {
@@ -32,7 +32,7 @@ func TestRandomEvictionStrategyEvict(t *testing.T) {
 	t.Run("evicts correct number of keys when over max size", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](2)
+		strategy := NewRandomEvictionStrategy[string](2)
 		strategy.RecordInsertion("a", "b", "c", "d")
 
 		keys := strategy.Evict()
@@ -44,7 +44,7 @@ func TestRandomEvictionStrategyEvict(t *testing.T) {
 	t.Run("evicted keys are distinct", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](1)
+		strategy := NewRandomEvictionStrategy[string](1)
 		strategy.RecordInsertion("a", "b", "c", "d", "e")
 
 		keys := strategy.Evict()
@@ -64,7 +64,7 @@ func TestRandomEvictionStrategyEvict(t *testing.T) {
 	t.Run("evicted keys exist in the strategy", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](1)
+		strategy := NewRandomEvictionStrategy[string](1)
 		strategy.RecordInsertion("a", "b", "c")
 
 		keys := strategy.Evict()
@@ -79,7 +79,7 @@ func TestRandomEvictionStrategyEvict(t *testing.T) {
 	t.Run("no eviction when maxSize is zero", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](0)
+		strategy := NewRandomEvictionStrategy[string](0)
 		strategy.RecordInsertion("a", "b", "c")
 
 		if keys := strategy.Evict(); len(keys) != 0 {
@@ -94,7 +94,7 @@ func TestRandomEvictionStrategyRecordDeletion(t *testing.T) {
 	t.Run("deleted key is no longer eviction candidate", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](1)
+		strategy := NewRandomEvictionStrategy[string](1)
 		strategy.RecordInsertion("a", "b")
 		strategy.RecordDeletion("b")
 
@@ -108,7 +108,7 @@ func TestRandomEvictionStrategyRecordDeletion(t *testing.T) {
 	t.Run("delete non-existent key is a no-op", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](1)
+		strategy := NewRandomEvictionStrategy[string](1)
 		strategy.RecordInsertion("a", "b")
 		strategy.RecordDeletion("missing")
 
@@ -121,7 +121,7 @@ func TestRandomEvictionStrategyRecordDeletion(t *testing.T) {
 	t.Run("internal index is consistent after deletion", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](10)
+		strategy := NewRandomEvictionStrategy[string](10)
 		strategy.RecordInsertion("a", "b", "c")
 		strategy.RecordDeletion("b")
 
@@ -139,7 +139,7 @@ func TestRandomEvictionStrategyRecordDeletion(t *testing.T) {
 func TestRandomEvictionStrategyClear(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewRandomEvictionStrategy[string, int](10)
+	strategy := NewRandomEvictionStrategy[string](10)
 	strategy.RecordInsertion("a", "b", "c")
 	strategy.Clear()
 
@@ -157,7 +157,7 @@ func TestRandomEvictionStrategyClear(t *testing.T) {
 func TestRandomEvictionStrategyIsValid(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewRandomEvictionStrategy[string, int](10)
+	strategy := NewRandomEvictionStrategy[string](10)
 	strategy.RecordInsertion("a")
 
 	if !strategy.IsValid("a") {
@@ -175,7 +175,7 @@ func TestRandomEvictionStrategyWithCache(t *testing.T) {
 		t.Parallel()
 
 		const maxSize = 3
-		strategy := NewRandomEvictionStrategy[string, int](maxSize)
+		strategy := NewRandomEvictionStrategy[string](maxSize)
 		c := NewCache(WithEvictionStrategy[string, int](strategy))
 
 		for i, key := range []string{"a", "b", "c", "d", "e"} {
@@ -190,7 +190,7 @@ func TestRandomEvictionStrategyWithCache(t *testing.T) {
 	t.Run("duplicate insertion does not grow internal state", func(t *testing.T) {
 		t.Parallel()
 
-		strategy := NewRandomEvictionStrategy[string, int](10)
+		strategy := NewRandomEvictionStrategy[string](10)
 		strategy.RecordInsertion("a")
 		strategy.RecordInsertion("a")
 

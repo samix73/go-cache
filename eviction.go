@@ -1,7 +1,7 @@
 package cache
 
 // EvictionStrategy defines the interface for eviction strategies used in the cache.
-type EvictionStrategy[K comparable, V any] interface {
+type EvictionStrategy[K comparable] interface {
 	// RecordAccess is called whenever multiple keys are accessed in the cache.
 	RecordAccess(keys ...K)
 	// RecordInsertion is called whenever multiple keys are inserted into the cache.

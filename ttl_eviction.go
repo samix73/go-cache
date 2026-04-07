@@ -5,25 +5,25 @@ import (
 	"time"
 )
 
-var _ EvictionStrategy[any, any] = (*TTLEvictionStrategy[any, any])(nil)
+var _ EvictionStrategy[any] = (*TTLEvictionStrategy[any])(nil)
 
 // TTLEvictionStrategy implements a time-to-live eviction strategy for the cache.
 // Entries are considered invalid after the configured TTL has elapsed since insertion.
-type TTLEvictionStrategy[K comparable, V any] struct {
+type TTLEvictionStrategy[K comparable] struct {
 	insertedAt map[K]time.Time
 	mu         sync.RWMutex
 	ttl        time.Duration
 }
 
 // NewTTLEvictionStrategy creates a new TTLEvictionStrategy with the given TTL.
-func NewTTLEvictionStrategy[K comparable, V any](ttl time.Duration) *TTLEvictionStrategy[K, V] {
-	return &TTLEvictionStrategy[K, V]{
+func NewTTLEvictionStrategy[K comparable](ttl time.Duration) *TTLEvictionStrategy[K] {
+	return &TTLEvictionStrategy[K]{
 		insertedAt: make(map[K]time.Time),
 		ttl:        ttl,
 	}
 }
 
-func (t *TTLEvictionStrategy[K, V]) Evict() []K {
+func (t *TTLEvictionStrategy[K]) Evict() []K {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -38,11 +38,11 @@ func (t *TTLEvictionStrategy[K, V]) Evict() []K {
 	return expired
 }
 
-func (t *TTLEvictionStrategy[K, V]) RecordAccess(keys ...K) {
+func (t *TTLEvictionStrategy[K]) RecordAccess(keys ...K) {
 	// TTL is based on insertion time, so access does not affect expiry.
 }
 
-func (t *TTLEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
+func (t *TTLEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -52,7 +52,7 @@ func (t *TTLEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
 	}
 }
 
-func (t *TTLEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
+func (t *TTLEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -61,7 +61,7 @@ func (t *TTLEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
 	}
 }
 
-func (t *TTLEvictionStrategy[K, V]) IsValid(key K) bool {
+func (t *TTLEvictionStrategy[K]) IsValid(key K) bool {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -73,7 +73,7 @@ func (t *TTLEvictionStrategy[K, V]) IsValid(key K) bool {
 	return !time.Now().After(insertedAt.Add(t.ttl))
 }
 
-func (t *TTLEvictionStrategy[K, V]) Clear() {
+func (t *TTLEvictionStrategy[K]) Clear() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

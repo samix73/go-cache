@@ -5,10 +5,10 @@ import (
 	"sync"
 )
 
-var _ EvictionStrategy[any, any] = (*LRUEvictionStrategy[any, any])(nil)
+var _ EvictionStrategy[any] = (*LRUEvictionStrategy[any])(nil)
 
 // LRUEvictionStrategy implements a least recently used eviction strategy for the cache.
-type LRUEvictionStrategy[K comparable, V any] struct {
+type LRUEvictionStrategy[K comparable] struct {
 	list    *list.List
 	lookup  map[K]*list.Element
 	mu      sync.RWMutex
@@ -17,15 +17,15 @@ type LRUEvictionStrategy[K comparable, V any] struct {
 
 // NewLRUEvictionStrategy creates a new LRUEvictionStrategy with the given maximum size.
 // When maxSize is 0, the strategy will never evict entries.
-func NewLRUEvictionStrategy[K comparable, V any](maxSize uint) *LRUEvictionStrategy[K, V] {
-	return &LRUEvictionStrategy[K, V]{
+func NewLRUEvictionStrategy[K comparable](maxSize uint) *LRUEvictionStrategy[K] {
+	return &LRUEvictionStrategy[K]{
 		list:    list.New(),
 		lookup:  make(map[K]*list.Element),
 		maxSize: maxSize,
 	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) Evict() []K {
+func (l *LRUEvictionStrategy[K]) Evict() []K {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
@@ -47,7 +47,7 @@ func (l *LRUEvictionStrategy[K, V]) Evict() []K {
 	return keys
 }
 
-func (l *LRUEvictionStrategy[K, V]) RecordAccess(keys ...K) {
+func (l *LRUEvictionStrategy[K]) RecordAccess(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -61,7 +61,7 @@ func (l *LRUEvictionStrategy[K, V]) RecordAccess(keys ...K) {
 	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
+func (l *LRUEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -71,7 +71,7 @@ func (l *LRUEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
 	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
+func (l *LRUEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -86,11 +86,11 @@ func (l *LRUEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
 	}
 }
 
-func (l *LRUEvictionStrategy[K, V]) IsValid(key K) bool {
+func (l *LRUEvictionStrategy[K]) IsValid(key K) bool {
 	return true // LRU strategy does not invalidate keys based on access patterns, so we always return true.
 }
 
-func (l *LRUEvictionStrategy[K, V]) Clear() {
+func (l *LRUEvictionStrategy[K]) Clear() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 

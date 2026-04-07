@@ -5,10 +5,10 @@ type CacheOptions[K comparable, V any] func(*Options[K, V])
 type CopyFunc[V any] func(V) V
 
 type Options[K comparable, V any] struct {
-	copyOnSet              CopyFunc[V]
-	copyOnGet              CopyFunc[V]
-	evictionStrategy       EvictionStrategy[K, V]
-	disableEvictionOnSet   bool
+	copyOnSet            CopyFunc[V]
+	copyOnGet            CopyFunc[V]
+	evictionStrategy     EvictionStrategy[K]
+	disableEvictionOnSet bool
 }
 
 // WithCopyOnSet sets a function that will be called to create a copy of the value when it is added to the cache.
@@ -26,7 +26,7 @@ func WithCopyOnGet[K comparable, V any](copyFunc CopyFunc[V]) CacheOptions[K, V]
 }
 
 // WithEvictionStrategy sets the eviction strategy to use for the cache.
-func WithEvictionStrategy[K comparable, V any](strategy EvictionStrategy[K, V]) CacheOptions[K, V] {
+func WithEvictionStrategy[K comparable, V any](strategy EvictionStrategy[K]) CacheOptions[K, V] {
 	return func(o *Options[K, V]) {
 		o.evictionStrategy = strategy
 	}

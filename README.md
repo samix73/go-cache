@@ -12,6 +12,7 @@ GoDoc: [pkg.go.dev/github.com/samix73/go-cache](https://pkg.go.dev/github.com/sa
 - Concurrency-safe operations via `sync.RWMutex`
 - Pluggable eviction strategies:
   - LRU (least recently used)
+  - LFU (least frequently used)
   - TTL (time-to-live)
   - Random
   - Composite (combine multiple strategies)
@@ -90,6 +91,7 @@ StartEvictionRoutine(ctx, interval) error
 ## Eviction Strategies
 
 - `NewLRUEvictionStrategy(maxSize)`: evicts least-recently-used keys when above capacity.
+- `NewLFUEvictionStrategy(maxSize)`: evicts least-frequently-used keys when above capacity.
 - `NewTTLEvictionStrategy(ttl)`: treats entries as invalid after TTL from insertion.
 - `NewRandomEvictionStrategy(maxSize)`: evicts random keys when above capacity.
 - `NewCompositeEvictionStrategy(strategies...)`: combines multiple strategies.

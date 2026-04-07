@@ -34,7 +34,7 @@ func TestTTLEvictionStrategyIsValid(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			strategy := NewTTLEvictionStrategy[string, int](tc.ttl)
+			strategy := NewTTLEvictionStrategy[string](tc.ttl)
 			strategy.RecordInsertion("key")
 
 			if tc.sleep > 0 {
@@ -51,7 +51,7 @@ func TestTTLEvictionStrategyIsValid(t *testing.T) {
 func TestTTLEvictionStrategyIsValidMissingKey(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewTTLEvictionStrategy[string, int](time.Hour)
+	strategy := NewTTLEvictionStrategy[string](time.Hour)
 	if strategy.IsValid("missing") {
 		t.Fatal("expected missing key to be invalid")
 	}
@@ -60,7 +60,7 @@ func TestTTLEvictionStrategyIsValidMissingKey(t *testing.T) {
 func TestTTLEvictionStrategyEvict(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewTTLEvictionStrategy[string, int](20 * time.Millisecond)
+	strategy := NewTTLEvictionStrategy[string](20 * time.Millisecond)
 	strategy.RecordInsertion("a", "b")
 
 	// No keys should be expired yet.
@@ -79,7 +79,7 @@ func TestTTLEvictionStrategyEvict(t *testing.T) {
 func TestTTLEvictionStrategyRecordDeletion(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewTTLEvictionStrategy[string, int](time.Hour)
+	strategy := NewTTLEvictionStrategy[string](time.Hour)
 	strategy.RecordInsertion("a")
 	strategy.RecordDeletion("a")
 
@@ -91,7 +91,7 @@ func TestTTLEvictionStrategyRecordDeletion(t *testing.T) {
 func TestTTLEvictionStrategyClear(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewTTLEvictionStrategy[string, int](time.Hour)
+	strategy := NewTTLEvictionStrategy[string](time.Hour)
 	strategy.RecordInsertion("a", "b")
 	strategy.Clear()
 
@@ -106,7 +106,7 @@ func TestTTLEvictionStrategyClear(t *testing.T) {
 func TestTTLEvictionStrategyWithCache(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewTTLEvictionStrategy[string, int](30 * time.Millisecond)
+	strategy := NewTTLEvictionStrategy[string](30 * time.Millisecond)
 	c := NewCache(WithEvictionStrategy[string, int](strategy))
 
 	c.Set("a", 1)
@@ -134,7 +134,7 @@ func TestTTLEvictionStrategyWithCache(t *testing.T) {
 func TestTTLEvictionStrategyEvictRemovesFromCache(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewTTLEvictionStrategy[string, int](20 * time.Millisecond)
+	strategy := NewTTLEvictionStrategy[string](20 * time.Millisecond)
 	c := NewCache(
 		WithEvictionStrategy[string, int](strategy),
 		WithDisableEvictionOnSet[string, int](),

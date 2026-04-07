@@ -138,7 +138,7 @@ func TestCacheDeleteAndClear(t *testing.T) {
 		{
 			name: "clear removes all keys and resets strategy",
 			run: func(t *testing.T) {
-				strategy := NewLRUEvictionStrategy[string, int](10)
+				strategy := NewLRUEvictionStrategy[string](10)
 				c := NewCache(WithEvictionStrategy[string, int](strategy))
 				c.Set("a", 1)
 				c.Set("b", 2)
@@ -303,7 +303,7 @@ func TestCacheCopyOptions(t *testing.T) {
 func TestCacheMaxSizeEviction(t *testing.T) {
 	t.Parallel()
 
-	strategy := NewLRUEvictionStrategy[string, int](2)
+	strategy := NewLRUEvictionStrategy[string](2)
 	c := NewCache(WithEvictionStrategy[string, int](strategy))
 
 	c.Set("a", 1)
@@ -333,7 +333,7 @@ func TestCacheMSetEvictsAllAboveMaxSize(t *testing.T) {
 	t.Parallel()
 
 	const maxSize = 3
-	strategy := NewLRUEvictionStrategy[string, int](maxSize)
+	strategy := NewLRUEvictionStrategy[string](maxSize)
 	c := NewCache(WithEvictionStrategy[string, int](strategy))
 
 	// Batch-insert more entries than maxSize on an empty cache.
@@ -350,7 +350,7 @@ func TestCacheDisableEvictionOnSet(t *testing.T) {
 	t.Parallel()
 
 	// With DisableEvictionOnSet, inserting beyond the max size should not evict entries.
-	strategy := NewLRUEvictionStrategy[string, int](2)
+	strategy := NewLRUEvictionStrategy[string](2)
 	c := NewCache(
 		WithEvictionStrategy[string, int](strategy),
 		WithDisableEvictionOnSet[string, int](),
@@ -375,7 +375,7 @@ func TestCacheDisableEvictionOnSetBackgroundRoutineStillEvicts(t *testing.T) {
 	t.Parallel()
 
 	// Even with DisableEvictionOnSet, the background eviction routine should still evict entries.
-	strategy := NewLRUEvictionStrategy[string, int](2)
+	strategy := NewLRUEvictionStrategy[string](2)
 	c := NewCache(
 		WithEvictionStrategy[string, int](strategy),
 		WithDisableEvictionOnSet[string, int](),
@@ -424,7 +424,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 		{
 			name: "bounded with lru eviction",
 			opts: []CacheOptions[int, int]{
-				WithEvictionStrategy[int, int](NewLRUEvictionStrategy[int, int](128)),
+				WithEvictionStrategy[int, int](NewLRUEvictionStrategy[int](128)),
 			},
 			max: 128,
 		},

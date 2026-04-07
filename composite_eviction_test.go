@@ -2,7 +2,7 @@ package cache
 
 import "testing"
 
-type mockEvictionStrategy[K comparable, V any] struct {
+type mockEvictionStrategy[K comparable] struct {
 	evictKeys      []K
 	validity       map[K]bool
 	recordAccess   [][]K
@@ -11,31 +11,31 @@ type mockEvictionStrategy[K comparable, V any] struct {
 	clearCallCount int
 }
 
-func (m *mockEvictionStrategy[K, V]) Evict() []K {
+func (m *mockEvictionStrategy[K]) Evict() []K {
 	out := make([]K, len(m.evictKeys))
 	copy(out, m.evictKeys)
 	return out
 }
 
-func (m *mockEvictionStrategy[K, V]) RecordAccess(keys ...K) {
+func (m *mockEvictionStrategy[K]) RecordAccess(keys ...K) {
 	copied := make([]K, len(keys))
 	copy(copied, keys)
 	m.recordAccess = append(m.recordAccess, copied)
 }
 
-func (m *mockEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
+func (m *mockEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	copied := make([]K, len(keys))
 	copy(copied, keys)
 	m.recordDelete = append(m.recordDelete, copied)
 }
 
-func (m *mockEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
+func (m *mockEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	copied := make([]K, len(keys))
 	copy(copied, keys)
 	m.recordInsert = append(m.recordInsert, copied)
 }
 
-func (m *mockEvictionStrategy[K, V]) IsValid(key K) bool {
+func (m *mockEvictionStrategy[K]) IsValid(key K) bool {
 	if m.validity == nil {
 		return true
 	}
@@ -46,17 +46,17 @@ func (m *mockEvictionStrategy[K, V]) IsValid(key K) bool {
 	return valid
 }
 
-func (m *mockEvictionStrategy[K, V]) Clear() {
+func (m *mockEvictionStrategy[K]) Clear() {
 	m.clearCallCount++
 }
 
 func TestNewCompositeEvictionStrategyFiltersNil(t *testing.T) {
 	t.Parallel()
 
-	left := &mockEvictionStrategy[string, int]{}
-	right := &mockEvictionStrategy[string, int]{}
+	left := &mockEvictionStrategy[string]{}
+	right := &mockEvictionStrategy[string]{}
 
-	composite := NewCompositeEvictionStrategy[string, int](left, nil, right, nil)
+	composite := NewCompositeEvictionStrategy[string](left, nil, right, nil)
 	if len(composite.strategies) != 2 {
 		t.Fatalf("expected 2 non-nil strategies, got %d", len(composite.strategies))
 	}
@@ -65,11 +65,11 @@ func TestNewCompositeEvictionStrategyFiltersNil(t *testing.T) {
 func TestCompositeEvictionStrategyEvictDeduplicatesKeys(t *testing.T) {
 	t.Parallel()
 
-	first := &mockEvictionStrategy[string, int]{evictKeys: []string{"a", "b", "c"}}
-	second := &mockEvictionStrategy[string, int]{evictKeys: []string{"b", "d"}}
-	third := &mockEvictionStrategy[string, int]{evictKeys: []string{"a"}}
+	first := &mockEvictionStrategy[string]{evictKeys: []string{"a", "b", "c"}}
+	second := &mockEvictionStrategy[string]{evictKeys: []string{"b", "d"}}
+	third := &mockEvictionStrategy[string]{evictKeys: []string{"a"}}
 
-	composite := NewCompositeEvictionStrategy[string, int](first, second, third)
+	composite := NewCompositeEvictionStrategy[string](first, second, third)
 	got := composite.Evict()
 
 	if len(got) != 4 {
@@ -90,16 +90,16 @@ func TestCompositeEvictionStrategyEvictDeduplicatesKeys(t *testing.T) {
 func TestCompositeEvictionStrategyForwardsHookCalls(t *testing.T) {
 	t.Parallel()
 
-	first := &mockEvictionStrategy[string, int]{}
-	second := &mockEvictionStrategy[string, int]{}
-	composite := NewCompositeEvictionStrategy[string, int](first, second)
+	first := &mockEvictionStrategy[string]{}
+	second := &mockEvictionStrategy[string]{}
+	composite := NewCompositeEvictionStrategy[string](first, second)
 
 	composite.RecordAccess("a", "b")
 	composite.RecordInsertion("c")
 	composite.RecordDeletion("d")
 	composite.Clear()
 
-	for i, strategy := range []*mockEvictionStrategy[string, int]{first, second} {
+	for i, strategy := range []*mockEvictionStrategy[string]{first, second} {
 		if len(strategy.recordAccess) != 1 {
 			t.Fatalf("strategy %d expected 1 access call, got %d", i, len(strategy.recordAccess))
 		}
@@ -121,10 +121,10 @@ func TestCompositeEvictionStrategyIsValidRequiresAllStrategies(t *testing.T) {
 	t.Run("all valid", func(t *testing.T) {
 		t.Parallel()
 
-		first := &mockEvictionStrategy[string, int]{validity: map[string]bool{"k": true}}
-		second := &mockEvictionStrategy[string, int]{validity: map[string]bool{"k": true}}
+		first := &mockEvictionStrategy[string]{validity: map[string]bool{"k": true}}
+		second := &mockEvictionStrategy[string]{validity: map[string]bool{"k": true}}
 
-		composite := NewCompositeEvictionStrategy[string, int](first, second)
+		composite := NewCompositeEvictionStrategy[string](first, second)
 		if !composite.IsValid("k") {
 			t.Fatal("expected key to be valid when all strategies allow it")
 		}
@@ -133,10 +133,10 @@ func TestCompositeEvictionStrategyIsValidRequiresAllStrategies(t *testing.T) {
 	t.Run("one invalid", func(t *testing.T) {
 		t.Parallel()
 
-		first := &mockEvictionStrategy[string, int]{validity: map[string]bool{"k": true}}
-		second := &mockEvictionStrategy[string, int]{validity: map[string]bool{"k": false}}
+		first := &mockEvictionStrategy[string]{validity: map[string]bool{"k": true}}
+		second := &mockEvictionStrategy[string]{validity: map[string]bool{"k": false}}
 
-		composite := NewCompositeEvictionStrategy[string, int](first, second)
+		composite := NewCompositeEvictionStrategy[string](first, second)
 		if composite.IsValid("k") {
 			t.Fatal("expected key to be invalid when any strategy rejects it")
 		}

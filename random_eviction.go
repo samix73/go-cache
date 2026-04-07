@@ -5,12 +5,12 @@ import (
 	"sync"
 )
 
-var _ EvictionStrategy[any, any] = (*RandomEvictionStrategy[any, any])(nil)
+var _ EvictionStrategy[any] = (*RandomEvictionStrategy[any])(nil)
 
 // RandomEvictionStrategy implements a random replacement eviction strategy for the cache.
 // When the cache exceeds the configured maximum size, random entries are chosen for eviction.
 // RecordAccess is a no-op, making it lockless on the read path.
-type RandomEvictionStrategy[K comparable, V any] struct {
+type RandomEvictionStrategy[K comparable] struct {
 	keys    []K
 	index   map[K]int
 	mu      sync.RWMutex
@@ -19,15 +19,15 @@ type RandomEvictionStrategy[K comparable, V any] struct {
 
 // NewRandomEvictionStrategy creates a new RandomEvictionStrategy with the given maximum size.
 // When maxSize is 0, the strategy will never evict entries.
-func NewRandomEvictionStrategy[K comparable, V any](maxSize uint) *RandomEvictionStrategy[K, V] {
-	return &RandomEvictionStrategy[K, V]{
+func NewRandomEvictionStrategy[K comparable](maxSize uint) *RandomEvictionStrategy[K] {
+	return &RandomEvictionStrategy[K]{
 		keys:    make([]K, 0),
 		index:   make(map[K]int),
 		maxSize: maxSize,
 	}
 }
 
-func (r *RandomEvictionStrategy[K, V]) Evict() []K {
+func (r *RandomEvictionStrategy[K]) Evict() []K {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -54,11 +54,11 @@ func (r *RandomEvictionStrategy[K, V]) Evict() []K {
 	return result
 }
 
-func (r *RandomEvictionStrategy[K, V]) RecordAccess(keys ...K) {
+func (r *RandomEvictionStrategy[K]) RecordAccess(keys ...K) {
 	// Random replacement does not consider access patterns.
 }
 
-func (r *RandomEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
+func (r *RandomEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -71,7 +71,7 @@ func (r *RandomEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
 	}
 }
 
-func (r *RandomEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
+func (r *RandomEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -93,11 +93,11 @@ func (r *RandomEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
 	}
 }
 
-func (r *RandomEvictionStrategy[K, V]) IsValid(key K) bool {
+func (r *RandomEvictionStrategy[K]) IsValid(key K) bool {
 	return true // Random replacement does not invalidate keys based on access patterns.
 }
 
-func (r *RandomEvictionStrategy[K, V]) Clear() {
+func (r *RandomEvictionStrategy[K]) Clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

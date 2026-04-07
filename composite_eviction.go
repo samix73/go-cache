@@ -5,14 +5,14 @@ import (
 	"slices"
 )
 
-var _ EvictionStrategy[string, int] = (*CompositeEvictionStrategy[string, int])(nil)
+var _ EvictionStrategy[any] = (*CompositeEvictionStrategy[any])(nil)
 
-type CompositeEvictionStrategy[K comparable, V any] struct {
-	strategies []EvictionStrategy[K, V]
+type CompositeEvictionStrategy[K comparable] struct {
+	strategies []EvictionStrategy[K]
 }
 
-func NewCompositeEvictionStrategy[K comparable, V any](strategies ...EvictionStrategy[K, V]) *CompositeEvictionStrategy[K, V] {
-	filtered := make([]EvictionStrategy[K, V], 0, len(strategies))
+func NewCompositeEvictionStrategy[K comparable](strategies ...EvictionStrategy[K]) *CompositeEvictionStrategy[K] {
+	filtered := make([]EvictionStrategy[K], 0, len(strategies))
 	for _, strategy := range strategies {
 		if strategy == nil {
 			continue
@@ -20,12 +20,12 @@ func NewCompositeEvictionStrategy[K comparable, V any](strategies ...EvictionStr
 		filtered = append(filtered, strategy)
 	}
 
-	return &CompositeEvictionStrategy[K, V]{
+	return &CompositeEvictionStrategy[K]{
 		strategies: filtered,
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) Evict() []K {
+func (c *CompositeEvictionStrategy[K]) Evict() []K {
 	keysToEvict := make(map[K]struct{}, 0)
 	for _, strategy := range c.strategies {
 		keys := strategy.Evict()
@@ -37,25 +37,25 @@ func (c *CompositeEvictionStrategy[K, V]) Evict() []K {
 	return slices.Collect(maps.Keys(keysToEvict))
 }
 
-func (c *CompositeEvictionStrategy[K, V]) RecordAccess(keys ...K) {
+func (c *CompositeEvictionStrategy[K]) RecordAccess(keys ...K) {
 	for _, strategy := range c.strategies {
 		strategy.RecordAccess(keys...)
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) RecordDeletion(keys ...K) {
+func (c *CompositeEvictionStrategy[K]) RecordDeletion(keys ...K) {
 	for _, strategy := range c.strategies {
 		strategy.RecordDeletion(keys...)
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) RecordInsertion(keys ...K) {
+func (c *CompositeEvictionStrategy[K]) RecordInsertion(keys ...K) {
 	for _, strategy := range c.strategies {
 		strategy.RecordInsertion(keys...)
 	}
 }
 
-func (c *CompositeEvictionStrategy[K, V]) IsValid(k K) bool {
+func (c *CompositeEvictionStrategy[K]) IsValid(k K) bool {
 	for _, strategy := range c.strategies {
 		if !strategy.IsValid(k) {
 			return false
@@ -65,7 +65,7 @@ func (c *CompositeEvictionStrategy[K, V]) IsValid(k K) bool {
 	return true
 }
 
-func (c *CompositeEvictionStrategy[K, V]) Clear() {
+func (c *CompositeEvictionStrategy[K]) Clear() {
 	for _, strategy := range c.strategies {
 		strategy.Clear()
 	}
