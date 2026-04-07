@@ -33,6 +33,8 @@ func (l *LRUEvictionStrategy[K, V]) Evict() []K {
 		return nil
 	}
 
+	// overflow is always <= l.list.Len(), so the loop will collect exactly overflow elements.
+	// The element != nil guard is kept as a defensive check.
 	overflow := uint(l.list.Len()) - l.maxSize
 	keys := make([]K, 0, overflow)
 
