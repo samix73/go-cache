@@ -19,14 +19,6 @@ func TestCacheGetSet(t *testing.T) {
 			key:   "a",
 			value: 10,
 		},
-		{
-			name: "with max size and strategy",
-			opts: []CacheOptions[string, int]{
-				WithEvictionStrategy[string, int](NewRandomEvictionStrategy[string, int]()),
-			},
-			key:   "b",
-			value: 42,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -100,7 +92,7 @@ func TestCacheDeleteAndClear(t *testing.T) {
 		{
 			name: "clear removes all keys and resets strategy",
 			run: func(t *testing.T) {
-				strategy := NewRandomEvictionStrategy[string, int]()
+				strategy := NewLRUEvictionStrategy[string, int](10)
 				c := NewCache(WithEvictionStrategy[string, int](strategy))
 				c.Set("a", 1)
 				c.Set("b", 2)
@@ -110,8 +102,8 @@ func TestCacheDeleteAndClear(t *testing.T) {
 				if size := cacheSize(c); size != 0 {
 					t.Fatalf("expected cache size 0 after Clear, got %d", size)
 				}
-				if len(strategy.keys) != 0 {
-					t.Fatalf("expected strategy keys to be cleared, got %d", len(strategy.keys))
+				if len(strategy.lookup) != 0 {
+					t.Fatalf("expected strategy keys to be cleared, got %d", len(strategy.lookup))
 				}
 			},
 		},
