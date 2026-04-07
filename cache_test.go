@@ -1,8 +1,10 @@
 package cache
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestCacheGetSet(t *testing.T) {
@@ -284,6 +286,70 @@ func TestCacheMaxSizeEviction(t *testing.T) {
 	}
 	if _, ok := c.Get("c"); !ok {
 		t.Fatal("expected key c to remain")
+	}
+}
+
+func TestCacheDisableEvictionOnSet(t *testing.T) {
+	t.Parallel()
+
+	// With DisableEvictionOnSet, inserting beyond the max size should not evict entries.
+	strategy := NewLRUEvictionStrategy[string, int](2)
+	c := NewCache(
+		WithEvictionStrategy[string, int](strategy),
+		WithDisableEvictionOnSet[string, int](),
+	)
+
+	c.Set("a", 1)
+	c.Set("b", 2)
+	c.Set("c", 3) // would normally evict one entry, but should not here
+
+	if size := cacheSize(c); size != 3 {
+		t.Fatalf("expected cache size 3 (eviction disabled on set), got %d", size)
+	}
+
+	for _, key := range []string{"a", "b", "c"} {
+		if _, ok := c.Get(key); !ok {
+			t.Fatalf("expected key %q to remain when eviction on set is disabled", key)
+		}
+	}
+}
+
+func TestCacheDisableEvictionOnSetBackgroundRoutineStillEvicts(t *testing.T) {
+	t.Parallel()
+
+	// Even with DisableEvictionOnSet, the background eviction routine should still evict entries.
+	strategy := NewLRUEvictionStrategy[string, int](2)
+	c := NewCache(
+		WithEvictionStrategy[string, int](strategy),
+		WithDisableEvictionOnSet[string, int](),
+	)
+
+	c.Set("a", 1)
+	c.Set("b", 2)
+	c.Set("c", 3) // goes in without eviction because the option is set
+
+	if size := cacheSize(c); size != 3 {
+		t.Fatalf("expected cache size 3 before background eviction, got %d", size)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	go func() {
+		_ = c.StartEvictionRoutine(ctx, 10*time.Millisecond)
+	}()
+
+	// Wait until the cache shrinks to the configured max size (2).
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if cacheSize(c) <= 2 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if size := cacheSize(c); size > 2 {
+		t.Fatalf("expected background routine to evict down to max size 2, got %d", size)
 	}
 }
 
