@@ -1,4 +1,5 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/samix73/go-cache.svg)](https://pkg.go.dev/github.com/samix73/go-cache)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/samix73/go-cache)
 
 
 # go-cache
