@@ -141,19 +141,18 @@ func (c *Cache[K, V]) set(pairs map[K]V) {
 		}
 
 		_, exists := c.storage[key]
+		c.storage[key] = value
 		if !exists {
-			if !c.options.disableEvictionOnSet {
-				c.evict()
-			}
 			if c.options.evictionStrategy != nil {
 				c.options.evictionStrategy.RecordInsertion(key)
 			}
+      if !c.options.disableEvictionOnSet {
+        c.evict()
+      }
 		} else if c.options.evictionStrategy != nil {
 			// Record access for existing keys to update their status in the eviction strategy.
 			c.options.evictionStrategy.RecordAccess(key)
 		}
-
-		c.storage[key] = value
 	}
 }
 

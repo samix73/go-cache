@@ -29,15 +29,22 @@ func (l *LRUEvictionStrategy[K, V]) Evict() []K {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
-	if l.maxSize == 0 || uint(l.list.Len()) < l.maxSize {
+	if l.maxSize == 0 || uint(l.list.Len()) <= l.maxSize {
 		return nil
 	}
 
-	if l.list.Back() == nil {
-		return nil
+	// overflow is always <= l.list.Len(), so the loop will collect exactly overflow elements.
+	// The element != nil guard is kept as a defensive check.
+	overflow := uint(l.list.Len()) - l.maxSize
+	keys := make([]K, 0, overflow)
+
+	element := l.list.Back()
+	for i := uint(0); i < overflow && element != nil; i++ {
+		keys = append(keys, element.Value.(K))
+		element = element.Prev()
 	}
 
-	return []K{l.list.Back().Value.(K)}
+	return keys
 }
 
 func (l *LRUEvictionStrategy[K, V]) RecordAccess(keys ...K) {

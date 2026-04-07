@@ -289,6 +289,23 @@ func TestCacheMaxSizeEviction(t *testing.T) {
 	}
 }
 
+func TestCacheMSetEvictsAllAboveMaxSize(t *testing.T) {
+	t.Parallel()
+
+	const maxSize = 3
+	strategy := NewLRUEvictionStrategy[string, int](maxSize)
+	c := NewCache(WithEvictionStrategy[string, int](strategy))
+
+	// Batch-insert more entries than maxSize on an empty cache.
+	// Map iteration is non-deterministic in Go, so we only assert the final count,
+	// not which specific keys were retained.
+	c.MSet(map[string]int{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5})
+
+	if size := cacheSize(c); size != maxSize {
+		t.Fatalf("expected cache size %d after MSet, got %d", maxSize, size)
+  }
+}
+
 func TestCacheDisableEvictionOnSet(t *testing.T) {
 	t.Parallel()
 
