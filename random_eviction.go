@@ -13,7 +13,7 @@ var _ EvictionStrategy[any, any] = (*RandomEvictionStrategy[any, any])(nil)
 type RandomEvictionStrategy[K comparable, V any] struct {
 	keys    []K
 	index   map[K]int
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	maxSize uint
 }
 
@@ -28,8 +28,8 @@ func NewRandomEvictionStrategy[K comparable, V any](maxSize uint) *RandomEvictio
 }
 
 func (r *RandomEvictionStrategy[K, V]) Evict() []K {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	if r.maxSize == 0 || uint(len(r.keys)) <= r.maxSize {
 		return nil
