@@ -71,6 +71,50 @@ func TestCacheMissingGet(t *testing.T) {
 	}
 }
 
+func TestCacheMGet(t *testing.T) {
+	t.Parallel()
+
+	copySlice := func(in []int) []int {
+		out := make([]int, len(in))
+		copy(out, in)
+		return out
+	}
+
+	c := NewCache(WithCopyOnGet[int](copySlice))
+	c.MSet(map[int][]int{
+		1: {1, 2},
+		2: {3, 4},
+	})
+
+	got := c.MGet(1, 2, 3)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 existing keys, got %d", len(got))
+	}
+
+	if _, exists := got[3]; exists {
+		t.Fatal("did not expect missing key to be present in MGet result")
+	}
+
+	got[1][0] = 99
+	again := c.MGet(1)
+	if again[1][0] != 1 {
+		t.Fatalf("expected copy-on-get to isolate stored value, got %v", again[1])
+	}
+}
+
+func TestStartEvictionRoutineWithoutStrategyReturnsError(t *testing.T) {
+	t.Parallel()
+
+	c := NewCache[string, int]()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	err := c.StartEvictionRoutine(ctx, 10*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected error when starting eviction routine without strategy")
+	}
+}
+
 func TestCacheDeleteAndClear(t *testing.T) {
 	t.Parallel()
 
@@ -227,7 +271,7 @@ func TestCacheCopyOptions(t *testing.T) {
 		{
 			name: "copy on get isolates returned value",
 			run: func(t *testing.T) {
-				c := NewCache[int, []int](WithCopyOnGet[int, []int](copySlice))
+				c := NewCache(WithCopyOnGet[int](copySlice))
 				c.Set(1, []int{1, 2, 3})
 
 				got, ok := c.Get(1)
