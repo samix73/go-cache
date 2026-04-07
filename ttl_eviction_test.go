@@ -146,7 +146,7 @@ func TestTTLEvictionStrategyEvictRemovesFromCache(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Run the eviction routine briefly to flush expired entries.
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	done := make(chan struct{})
 	go func() {
