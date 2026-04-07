@@ -9,15 +9,19 @@ var _ EvictionStrategy[any, any] = (*LRUEvictionStrategy[any, any])(nil)
 
 // LRUEvictionStrategy implements a least recently used eviction strategy for the cache.
 type LRUEvictionStrategy[K comparable, V any] struct {
-	list   *list.List
-	lookup map[K]*list.Element
-	mu     sync.RWMutex
+	list    *list.List
+	lookup  map[K]*list.Element
+	mu      sync.RWMutex
+	maxSize uint
 }
 
-func NewLRUEvictionStrategy[K comparable, V any]() *LRUEvictionStrategy[K, V] {
+// NewLRUEvictionStrategy creates a new LRUEvictionStrategy with the given maximum size.
+// When maxSize is 0, the strategy will never evict entries.
+func NewLRUEvictionStrategy[K comparable, V any](maxSize uint) *LRUEvictionStrategy[K, V] {
 	return &LRUEvictionStrategy[K, V]{
-		list:   list.New(),
-		lookup: make(map[K]*list.Element),
+		list:    list.New(),
+		lookup:  make(map[K]*list.Element),
+		maxSize: maxSize,
 	}
 }
 
@@ -25,7 +29,7 @@ func (l *LRUEvictionStrategy[K, V]) Evict() []K {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
-	if l.list.Len() == 0 {
+	if l.maxSize == 0 || uint(l.list.Len()) < l.maxSize {
 		return nil
 	}
 
