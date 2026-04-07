@@ -345,7 +345,7 @@ func TestCacheDisableEvictionOnSetBackgroundRoutineStillEvicts(t *testing.T) {
 		t.Fatalf("expected cache size 3 before background eviction, got %d", size)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	go func() {
