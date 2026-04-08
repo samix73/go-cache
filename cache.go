@@ -181,6 +181,7 @@ func (c *Cache[K, V]) Delete(key K) {
 }
 
 // CompareAndSwap updates the value associated with the given key if the compareFn returns true.
+// If key is missing compareFn receives a zero value as current, if compareFn returns false no new value will be added.
 func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new V) bool) bool {
 	if compareFn == nil {
 		return false
@@ -189,8 +190,8 @@ func (c *Cache[K, V]) CompareAndSwap(key K, value V, compareFn func(current, new
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	currentValue, exists := c.storage[key]
-	if !exists || !compareFn(currentValue, value) {
+	currentValue := c.storage[key]
+	if !compareFn(currentValue, value) {
 		return false
 	}
 
