@@ -25,12 +25,6 @@ func NewReadThroughCache[K comparable, V any](c *Cache[K, V], loader Loader[K, V
 	}
 }
 
-// readThroughResult is the value type shared through singleflight.
-type readThroughResult[V any] struct {
-	value V
-	found bool
-}
-
 // Get returns the value for key.
 //
 //   - If the key is present in the in-memory cache the loader is not called.
@@ -46,12 +40,13 @@ func (r *ReadThroughCache[K, V]) Get(ctx context.Context, key K) (V, bool, error
 		return v, true, nil
 	}
 
-	// Use fmt.Sprintf equivalent – singleflight requires a string key.
-	// We use an any-keyed map internally but singleflight expects string.
-	// Convert via a small helper that is allocation-cheap for common types.
+	// singleflight requires a string key; convert the generic key via a helper.
 	sfKey := singleflightKey(key)
 
-	type result = readThroughResult[V]
+	type result struct {
+		value V
+		found bool
+	}
 
 	ch := r.group.DoChan(sfKey, func() (any, error) {
 		v, found, err := r.loader.Load(ctx, key)

@@ -87,6 +87,21 @@ StartEvictionRoutine(ctx, interval) error
 - Starts periodic eviction until `ctx` is canceled.
 - Returns an error if no eviction strategy is configured.
 
+## Eviction Strategies
+
+- `NewLRUEvictionStrategy(maxSize)`: evicts least-recently-used keys when above capacity.
+- `NewLFUEvictionStrategy(maxSize)`: evicts least-frequently-used keys when above capacity.
+- `NewTTLEvictionStrategy(ttl)`: treats entries as invalid after TTL from insertion.
+- `NewRandomEvictionStrategy(maxSize)`: evicts random keys when above capacity.
+- `NewCompositeEvictionStrategy(strategies...)`: combines multiple strategies.
+
+## Options
+
+- `WithEvictionStrategy(strategy)`: plugs in eviction behavior.
+- `WithCopyOnSet(copyFn)`: copies values before storing.
+- `WithCopyOnGet(copyFn)`: copies values before returning.
+- `WithDisableEvictionOnSet()`: disables eviction during `Set`/`MSet` only.
+
 ## Read-Through Cache
 
 `ReadThroughCache[K, V]` wraps a `Cache` and a `Loader` to provide read-through
@@ -171,21 +186,6 @@ rtc := cache.NewReadThroughCache(c, loader)
 `Set(key K, value V)` — pass-through to the underlying cache.
 
 `Delete(key K)` — pass-through to the underlying cache.
-
-## Eviction Strategies
-
-- `NewLRUEvictionStrategy(maxSize)`: evicts least-recently-used keys when above capacity.
-- `NewLFUEvictionStrategy(maxSize)`: evicts least-frequently-used keys when above capacity.
-- `NewTTLEvictionStrategy(ttl)`: treats entries as invalid after TTL from insertion.
-- `NewRandomEvictionStrategy(maxSize)`: evicts random keys when above capacity.
-- `NewCompositeEvictionStrategy(strategies...)`: combines multiple strategies.
-
-## Options
-
-- `WithEvictionStrategy(strategy)`: plugs in eviction behavior.
-- `WithCopyOnSet(copyFn)`: copies values before storing.
-- `WithCopyOnGet(copyFn)`: copies values before returning.
-- `WithDisableEvictionOnSet()`: disables eviction during `Set`/`MSet` only.
 
 ## Development
 
