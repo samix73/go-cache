@@ -115,6 +115,11 @@ Concurrent misses for the same key result in **only one loader call**.  All
 waiting goroutines receive the same value once it arrives (backed by
 [`singleflight`](https://pkg.go.dev/golang.org/x/sync/singleflight)).
 
+The loader receives a context that is not tied to any single caller's
+cancellation, so one waiter timing out cannot abort the shared backend load
+for all other concurrent callers. Individual callers still observe their own
+context deadline/cancellation while waiting for the result.
+
 ### Loader interface
 
 ```go

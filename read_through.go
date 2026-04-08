@@ -48,8 +48,21 @@ func (r *ReadThroughCache[K, V]) Get(ctx context.Context, key K) (V, bool, error
 		found bool
 	}
 
+	// The shared load must not be cancelable by a single caller: if the goroutine
+	// that created the in-flight request cancels its context, the backend load
+	// would be canceled for all other concurrent waiters too. Individual callers
+	// still honor their own ctx below while waiting for the shared result.
+	loadCtx := context.WithoutCancel(ctx)
+
 	ch := r.group.DoChan(sfKey, func() (any, error) {
-		v, found, err := r.loader.Load(ctx, key)
+		// Re-check the cache inside singleflight to close the TOCTOU window:
+		// a goroutine may have passed the outer miss check, been descheduled,
+		// and arrived here only after a previous in-flight load already stored
+		// the value.
+		if v, ok := r.cache.Get(key); ok {
+			return result{value: v, found: true}, nil
+		}
+		v, found, err := r.loader.Load(loadCtx, key)
 		if err != nil {
 			return result{}, err
 		}
@@ -69,7 +82,11 @@ func (r *ReadThroughCache[K, V]) Get(ctx context.Context, key K) (V, bool, error
 			return zero, false, res.Err
 		}
 		got := res.Val.(result)
-		return got.value, got.found, nil
+		if !got.found {
+			var zero V
+			return zero, false, nil
+		}
+		return got.value, true, nil
 	}
 }
 

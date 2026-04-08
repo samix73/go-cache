@@ -129,10 +129,12 @@ func TestReadThroughCacheNotFoundDoesNotStore(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name string
-		key  string
+		name        string
+		key         string
+		loaderValue int // value the loader returns alongside found=false
 	}{
-		{name: "loader reports not found", key: "missing"},
+		{name: "loader reports not found, zero value", key: "missing", loaderValue: 0},
+		{name: "loader reports not found, non-zero value", key: "missing2", loaderValue: 99},
 	}
 
 	for _, tc := range testCases {
@@ -140,7 +142,7 @@ func TestReadThroughCacheNotFoundDoesNotStore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			loader := &mockLoader[string, int]{found: false}
+			loader := &mockLoader[string, int]{found: false, value: tc.loaderValue}
 			c := NewCache[string, int]()
 			rtc := NewReadThroughCache(c, loader)
 
