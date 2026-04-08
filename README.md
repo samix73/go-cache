@@ -87,6 +87,91 @@ StartEvictionRoutine(ctx, interval) error
 - Starts periodic eviction until `ctx` is canceled.
 - Returns an error if no eviction strategy is configured.
 
+## Read-Through Cache
+
+`ReadThroughCache[K, V]` wraps a `Cache` and a `Loader` to provide read-through
+semantics: on a cache miss the loader is called to fetch the value from a backing
+store (database, HTTP API, file, etc.), the result is stored in the cache, and
+then returned to the caller.
+
+### Thundering-herd protection
+
+Concurrent misses for the same key result in **only one loader call**.  All
+waiting goroutines receive the same value once it arrives (backed by
+[`singleflight`](https://pkg.go.dev/golang.org/x/sync/singleflight)).
+
+### Loader interface
+
+```go
+type Loader[K comparable, V any] interface {
+    Load(ctx context.Context, key K) (V, bool, error)
+}
+```
+
+Return `(value, true, nil)` when found, `(zero, false, nil)` when not found, or
+`(zero, false, err)` on error.  A `LoaderFunc` adapter is provided for simple
+function-based loaders.
+
+### Quick example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    cache "github.com/samix73/go-cache"
+)
+
+// dbLoader simulates loading from a database.
+type dbLoader struct {
+    db map[string]int
+}
+
+func (d *dbLoader) Load(_ context.Context, key string) (int, bool, error) {
+    v, ok := d.db[key]
+    return v, ok, nil
+}
+
+func main() {
+    c := cache.NewCache[string, int]()
+    loader := &dbLoader{db: map[string]int{"apples": 3}}
+
+    rtc := cache.NewReadThroughCache(c, loader)
+
+    v, ok, err := rtc.Get(context.Background(), "apples")
+    fmt.Println(v, ok, err) // 3 true <nil>
+
+    // Second call hits the in-memory cache; loader is not called again.
+    v, ok, err = rtc.Get(context.Background(), "apples")
+    fmt.Println(v, ok, err) // 3 true <nil>
+}
+```
+
+You can also use the `LoaderFunc` adapter instead of defining a type:
+
+```go
+loader := cache.LoaderFunc[string, int](func(ctx context.Context, key string) (int, bool, error) {
+    // fetch from backing store …
+    return 42, true, nil
+})
+rtc := cache.NewReadThroughCache(c, loader)
+```
+
+### API
+
+`NewReadThroughCache(c *Cache[K,V], loader Loader[K,V]) *ReadThroughCache[K,V]`
+
+`Get(ctx context.Context, key K) (V, bool, error)`
+- Returns `(value, true, nil)` when found in cache or loaded successfully.
+- Returns `(zero, false, nil)` when the loader reports not-found (result is not stored).
+- Returns `(zero, false, err)` when the loader errors (result is not stored).
+
+`Set(key K, value V)` — pass-through to the underlying cache.
+
+`Delete(key K)` — pass-through to the underlying cache.
+
 ## Eviction Strategies
 
 - `NewLRUEvictionStrategy(maxSize)`: evicts least-recently-used keys when above capacity.
