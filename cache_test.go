@@ -12,7 +12,7 @@ func TestCacheGetSet(t *testing.T) {
 
 	testCases := []struct {
 		name  string
-		opts  []CacheOptions[string, int]
+		opts  []CacheOption[string, int]
 		key   string
 		value int
 	}{
@@ -190,7 +190,7 @@ func TestCacheCompareAndSwap(t *testing.T) {
 			seed:         nil,
 			newValue:     5,
 			compareFn:    func(current, new int) bool { return true },
-			wantValue: 	  5,
+			wantValue:    5,
 			wantSwapped:  true,
 			wantValueSet: true,
 		},
@@ -424,7 +424,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 
 	testCases := []struct {
 		name string
-		opts []CacheOptions[int, int]
+		opts []CacheOption[int, int]
 		max  int
 	}{
 		{
@@ -432,7 +432,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 		},
 		{
 			name: "bounded with lru eviction",
-			opts: []CacheOptions[int, int]{
+			opts: []CacheOption[int, int]{
 				WithEvictionStrategy[int, int](NewLRUEvictionStrategy[int](128)),
 			},
 			max: 128,

@@ -11,15 +11,15 @@ import (
 type Cache[K comparable, V any] struct {
 	storage map[K]V
 	mu      sync.RWMutex
-	options Options[K, V]
+	options cacheConfig[K, V]
 }
 
 // NewCache creates a new instance of Cache.
-func NewCache[K comparable, V any](opts ...CacheOptions[K, V]) *Cache[K, V] {
+func NewCache[K comparable, V any](opts ...CacheOption[K, V]) *Cache[K, V] {
 	return &Cache[K, V]{
 		storage: make(map[K]V),
 
-		options: applyOptions(opts...),
+		options: applyCacheOptions(opts...),
 	}
 }
 
